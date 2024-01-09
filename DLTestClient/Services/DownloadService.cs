@@ -50,18 +50,27 @@ namespace DLTestClient.Services
             var downloadTasks = new List<Task>();
             foreach (var downloader in downloaders)
             {
-                var downloadUrl = GetNextDownloadUrl();
-                if (downloadUrl is null)
-                {
-                    break;
-                }
                 var dirInfo = new DirectoryInfo(_cacheDir);
-                downloadTasks.Add(downloader.DownloadFileTaskAsync(downloadUrl, dirInfo, cts));
+                downloadTasks.Add(Task.Run(async () =>
+                {
+                    while (true)
+                    {
+                        var downloadUrl = GetNextDownloadUrl();
+                        if (downloadUrl == null)
+                        {
+                            _logger.LogInformation($"[#{downloader.GetHashCode()}] No more url to download");
+                            break;
+                        }
+                        _logger.LogInformation($"[#{downloader.GetHashCode()}] Downloading next url: {downloadUrl}");
+                        await downloader.DownloadFileTaskAsync(downloadUrl, dirInfo, cts);
+                    }
+                }, cts));
             }
             Task.WaitAll(downloadTasks.ToArray(), cts);
             // dispose
             foreach (var downloader in downloaders)
             {
+                _logger.LogInformation($"Disposing [#{downloader.GetHashCode()}]");
                 downloader.Dispose();
             }
         }
@@ -84,17 +93,6 @@ namespace DLTestClient.Services
             {
                 DownloadingCount--;
                 DownloadedCount++;
-                var downloadUrl = GetNextDownloadUrl();
-                if (downloadUrl == null)
-                {
-                    _logger.LogInformation($"[#{ds.GetHashCode()}] No more url to download");
-                }
-                else
-                {
-                    _logger.LogInformation($"[#{ds.GetHashCode()}] Downloading next url: {downloadUrl}");
-                    var dirInfo = new DirectoryInfo(_cacheDir);
-                    ds.DownloadFileTaskAsync(downloadUrl, dirInfo);
-                }
             }
         }
 
