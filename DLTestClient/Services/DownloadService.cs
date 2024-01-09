@@ -58,7 +58,6 @@ namespace DLTestClient.Services
                 var dirInfo = new DirectoryInfo(_cacheDir);
                 downloadTasks.Add(downloader.DownloadFileTaskAsync(downloadUrl, dirInfo, cts));
             }
-            downloadTasks.ForEach(x => x.Start());
             Task.WaitAll(downloadTasks.ToArray(), cts);
             // dispose
             foreach (var downloader in downloaders)
@@ -73,7 +72,7 @@ namespace DLTestClient.Services
             if (sender is Downloader.DownloadService ds)
             {
                 DownloadingCount++;
-                _logger.LogInformation($"Download \"{e.FileName}\" started, " +
+                _logger.LogInformation($"[#{ds.GetHashCode()}] Download \"{e.FileName}\" started, " +
                     $"total {HumanizeUtil.BytesToString(e.TotalBytesToReceive)}");
             }
         }
@@ -88,11 +87,11 @@ namespace DLTestClient.Services
                 var downloadUrl = GetNextDownloadUrl();
                 if (downloadUrl == null)
                 {
-                    _logger.LogInformation("No more url to download");
+                    _logger.LogInformation($"[#{ds.GetHashCode()}] No more url to download");
                 }
                 else
                 {
-                    _logger.LogInformation($"Downloaded next url: {downloadUrl}");
+                    _logger.LogInformation($"[#{ds.GetHashCode()}] Downloading next url: {downloadUrl}");
                     var dirInfo = new DirectoryInfo(_cacheDir);
                     ds.DownloadFileTaskAsync(downloadUrl, dirInfo);
                 }
@@ -104,10 +103,11 @@ namespace DLTestClient.Services
             if (sender == null) { return; }
             if (sender is Downloader.DownloadService ds)
             {
-                var stat = DownloaderStatDict[ds.GetHashCode()];
+                (long, long, double) stat;
                 stat.Item1 = e.ReceivedBytesSize;
                 stat.Item2 = e.TotalBytesToReceive;
                 stat.Item3 = e.BytesPerSecondSpeed;
+                DownloaderStatDict[ds.GetHashCode()] = stat;
             }
         }
 

@@ -30,16 +30,21 @@ namespace DLTestClient
             downloadService.DownloadUrls = dlResponse.File.Chunks.Select(c => c.PublicUrl).ToList();
             var task = Task.Run(async () =>
             {
-                var msg = "";
-                foreach (var stat in downloadService.DownloaderStatDict)
+                while (true)
                 {
-                    msg += $"[#{stat.Key}]: {HumanizeUtil.BytesToString(stat.Value.Item1)} / " +
-                    $"{HumanizeUtil.BytesToString(stat.Value.Item2)}, " +
-                    $"speed = {HumanizeUtil.BytesToString(stat.Value.Item3):0.00}/s" +
-                    $"\n";
+                    var msg = "";
+                    bool first = true;
+                    foreach (var stat in downloadService.DownloaderStatDict)
+                    {
+                        if (!first) { msg += "\n      "; }
+                        first = false;
+                        msg += $"[#{stat.Key}]: {HumanizeUtil.BytesToString(stat.Value.Item1)} / " +
+                        $"{HumanizeUtil.BytesToString(stat.Value.Item2)}, " +
+                        $"speed = {HumanizeUtil.BytesToString(stat.Value.Item3):0.00}/s"; ;
+                    }
+                    _logger.LogInformation($"{msg}");
+                    await Task.Delay(1000);
                 }
-                _logger.LogInformation($"{msg}");
-                await Task.Delay(1000);
             });
             downloadService.StartDownload();
             task.Wait();
